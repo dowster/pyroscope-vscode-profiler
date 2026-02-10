@@ -82,6 +82,13 @@ export class ProfileStore {
     }
 
     /**
+     * Get all metrics (for debug info)
+     */
+    public getAllMetrics(): ProfileMetrics {
+        return this.metrics || new Map();
+    }
+
+    /**
      * Helper to check if two paths refer to the same file
      */
     private pathsMatch(path1: string, path2: string): boolean {

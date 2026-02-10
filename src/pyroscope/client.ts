@@ -1,21 +1,28 @@
 import { AxiosInstance } from 'axios';
 import { createAuthenticatedClient } from './auth';
+import { getLogger } from '../utils/logger';
 
 export class PyroscopeClient {
     private client: AxiosInstance;
+    private logger: ReturnType<typeof getLogger>;
 
     constructor(serverUrl: string, authToken?: string) {
         this.client = createAuthenticatedClient(serverUrl, {
             token: authToken,
         });
+        this.logger = getLogger();
     }
 
     /**
      * Get list of applications from Pyroscope
      */
     async getApplications(): Promise<string[]> {
+        const url = '/api/apps';
+        this.logger.debug(`GET ${url}`);
+
         try {
-            const response = await this.client.get('/api/apps');
+            const response = await this.client.get(url);
+            this.logger.debug(`Response: ${response.status} ${response.statusText}`);
 
             // Handle different response formats
             if (Array.isArray(response.data)) {
@@ -29,7 +36,11 @@ export class PyroscopeClient {
 
             return [];
         } catch (error: any) {
+            this.logger.error(`GET ${url} failed: ${error.message}`);
+
             if (error.response) {
+                this.logger.error(`  Status: ${error.response.status}`);
+                this.logger.error(`  Data: ${JSON.stringify(error.response.data)}`);
                 throw new Error(
                     `Pyroscope API error: ${error.response.status} ${error.response.statusText}`
                 );
@@ -61,6 +72,9 @@ export class PyroscopeClient {
             // Construct query
             const query = `${appName}`;
 
+            const url = `/render?query=${query}&from=${from}&until=${now}&format=pprof`;
+            this.logger.debug(`GET ${url}`);
+
             const response = await this.client.get('/render', {
                 params: {
                     query,
@@ -71,9 +85,15 @@ export class PyroscopeClient {
                 responseType: 'arraybuffer',
             });
 
+            this.logger.debug(`Response: ${response.status}, ${response.data.length} bytes`);
+
             return Buffer.from(response.data);
         } catch (error: any) {
+            this.logger.error(`GET /render failed: ${error.message}`);
+
             if (error.response) {
+                this.logger.error(`  Status: ${error.response.status}`);
+
                 // Try to parse error message from response
                 let errorMsg = `${error.response.status} ${error.response.statusText}`;
                 try {

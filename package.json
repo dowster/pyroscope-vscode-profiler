@@ -34,6 +34,10 @@
       {
         "command": "pyroscope.clearProfile",
         "title": "Pyroscope: Clear Profile"
+      },
+      {
+        "command": "pyroscope.showDebugInfo",
+        "title": "Pyroscope: Show Debug Info"
       }
     ],
     "configuration": {
@@ -75,6 +79,33 @@
           "minimum": 0,
           "maximum": 100,
           "description": "Minimum percentage to display hints (0-100)"
+        },
+        "pyroscope.pathMappings": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Path mappings to convert profile paths to local paths. Example: `[{\"from\": \"/app/src\", \"to\": \"${workspaceFolder}/src\"}]`",
+          "items": {
+            "type": "object",
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "Path prefix in profile (e.g., /app/src)"
+              },
+              "to": {
+                "type": "string",
+                "description": "Local path prefix (supports ${workspaceFolder})"
+              }
+            }
+          }
+        },
+        "pyroscope.debugLogging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable verbose debug logging in Output panel"
         }
       }
     }

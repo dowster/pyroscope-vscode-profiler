@@ -1,6 +1,8 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ParsedProfile, getSampleTypeIndex } from './pprofParser';
+import { PathResolver } from '../utils/pathResolver';
+import { getLogger, shouldLogDebug } from '../utils/logger';
 
 export interface LineMetrics {
     filePath: string;
@@ -20,7 +22,11 @@ export type ProfileMetrics = Map<string, FileMetrics>;
 /**
  * Maps profile samples to source code locations and calculates metrics per line
  */
-export function mapSamplesToSource(profile: ParsedProfile): ProfileMetrics {
+export function mapSamplesToSource(
+    profile: ParsedProfile,
+    pathResolver: PathResolver
+): ProfileMetrics {
+    const logger = getLogger();
     const metricsMap = new Map<string, FileMetrics>();
 
     // Find sample type indices
@@ -32,6 +38,22 @@ export function mapSamplesToSource(profile: ParsedProfile): ProfileMetrics {
         'count',
     ]);
     const inuseSpaceIndex = findSampleTypeIndex(profile, ['inuse_space', 'inuse']);
+
+    // Log unique paths from profile
+    const uniquePaths = new Set<string>();
+    profile.samples.forEach((sample) => {
+        const stack = getStackTrace(sample, profile);
+        stack.forEach((frame) => {
+            if (frame.filename) {
+                uniquePaths.add(frame.filename);
+            }
+        });
+    });
+
+    if (shouldLogDebug()) {
+        logger.debug(`Profile contains ${uniquePaths.size} unique file paths:`);
+        uniquePaths.forEach((p) => logger.debug(`  ${p}`));
+    }
 
     // Calculate totals for percentage calculations
     let totalCpu = 0;
@@ -59,24 +81,25 @@ export function mapSamplesToSource(profile: ParsedProfile): ProfileMetrics {
                 return;
             }
 
-            // Normalize the file path
-            const normalizedPath = normalizeFilePath(frame.filename);
-            if (!normalizedPath) {
+            // Use PathResolver instead of normalizeFilePath
+            const resolvedPath = pathResolver.resolveFilePath(frame.filename);
+            if (!resolvedPath) {
+                // Path couldn't be resolved - already logged by PathResolver
                 return;
             }
 
             // Get or create file metrics map
-            let fileMetrics = metricsMap.get(normalizedPath);
+            let fileMetrics = metricsMap.get(resolvedPath);
             if (!fileMetrics) {
                 fileMetrics = new Map<number, LineMetrics>();
-                metricsMap.set(normalizedPath, fileMetrics);
+                metricsMap.set(resolvedPath, fileMetrics);
             }
 
             // Get or create line metrics
             let lineMetrics = fileMetrics.get(frame.line);
             if (!lineMetrics) {
                 lineMetrics = {
-                    filePath: normalizedPath,
+                    filePath: resolvedPath,
                     line: frame.line,
                     cpuPercent: 0,
                     cpuSamples: 0,
@@ -134,6 +157,15 @@ export function mapSamplesToSource(profile: ParsedProfile): ProfileMetrics {
         });
     });
 
+    logger.info(`Mapped metrics to ${metricsMap.size} files`);
+
+    if (shouldLogDebug()) {
+        logger.debug('Matched files:');
+        metricsMap.forEach((lines, filePath) => {
+            logger.debug(`  ${filePath}: ${lines.size} lines`);
+        });
+    }
+
     return metricsMap;
 }
 
@@ -181,53 +213,4 @@ function findSampleTypeIndex(profile: ParsedProfile, possibleNames: string[]): n
         }
     }
     return -1;
-}
-
-/**
- * Normalizes file paths to match workspace files
- * Handles: absolute paths, relative paths, GOPATH variations
- */
-function normalizeFilePath(filePath: string): string | null {
-    if (!filePath) {
-        return null;
-    }
-
-    // Clean the path
-    let normalized = filePath.replace(/\\/g, '/').trim();
-
-    // Try to find the file in workspace
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-        return normalized;
-    }
-
-    // Strategy 1: Check if it's an absolute path that exists
-    if (path.isAbsolute(normalized)) {
-        return normalized;
-    }
-
-    // Strategy 2: Try relative to each workspace folder
-    for (const folder of workspaceFolders) {
-        const candidate = path.join(folder.uri.fsPath, normalized);
-        // We'll validate existence later; for now just return the candidate
-        return candidate;
-    }
-
-    // Strategy 3: Check if path contains common patterns and strip them
-    // For Go: remove everything before the module path
-    const goModuleMatch = normalized.match(/\/go\/pkg\/mod\/(.+)/);
-    if (goModuleMatch) {
-        // This is a dependency, not user code - skip it
-        return null;
-    }
-
-    // Strategy 4: Try to find by basename in workspace
-    // This is a fallback and should be used carefully
-    const basename = path.basename(normalized);
-    for (const folder of workspaceFolders) {
-        const candidate = path.join(folder.uri.fsPath, basename);
-        return candidate;
-    }
-
-    return normalized;
 }

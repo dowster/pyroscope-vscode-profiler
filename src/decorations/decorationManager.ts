@@ -2,13 +2,16 @@ import * as vscode from 'vscode';
 import { ProfileStore } from '../state/profileStore';
 import { renderHint, HintConfig } from './hintRenderer';
 import { PyroscopeHoverProvider } from './hoverProvider';
+import { getLogger, shouldLogDebug } from '../utils/logger';
 
 export class DecorationManager {
     private decorationTypes: Map<string, vscode.TextEditorDecorationType> = new Map();
     private enabled: boolean = true;
     private hoverProvider: vscode.Disposable | null = null;
+    private logger: ReturnType<typeof getLogger>;
 
     constructor(private profileStore: ProfileStore) {
+        this.logger = getLogger();
         this.registerHoverProvider();
     }
 
@@ -29,6 +32,10 @@ export class DecorationManager {
      * Update decorations for all visible editors
      */
     public updateDecorations(): void {
+        if (shouldLogDebug()) {
+            this.logger.debug('Updating decorations for visible editors');
+        }
+
         if (!this.enabled || !this.profileStore.hasProfile()) {
             this.clearAllDecorations();
             return;
@@ -47,6 +54,14 @@ export class DecorationManager {
     private updateEditorDecorations(editor: vscode.TextEditor, config: HintConfig): void {
         const filePath = editor.document.uri.fsPath;
         const fileMetrics = this.profileStore.getMetricsForFile(filePath);
+
+        if (shouldLogDebug()) {
+            if (fileMetrics) {
+                this.logger.debug(`  ${filePath}: ${fileMetrics.size} lines with metrics`);
+            } else {
+                this.logger.debug(`  ${filePath}: no metrics found`);
+            }
+        }
 
         if (!fileMetrics) {
             return;

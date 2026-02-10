@@ -4,13 +4,16 @@ import { ProfileStore } from './state/profileStore';
 import { registerLoadProfileCommand } from './commands/loadProfile';
 import { registerFetchFromPyroscopeCommand } from './commands/fetchFromPyroscope';
 import { registerToggleHintsCommand, registerClearProfileCommand } from './commands/toggleHints';
+import { initializeLogger, getLogger } from './utils/logger';
 
 let decorationManager: DecorationManager;
 let profileStore: ProfileStore;
 let statusBarItem: vscode.StatusBarItem;
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Pyroscope Profile Viewer extension is now active');
+    // Initialize logger FIRST
+    const logger = initializeLogger(context);
+    logger.info('Pyroscope Profile Viewer extension activated');
 
     // Initialize core components
     profileStore = new ProfileStore();
@@ -48,6 +51,50 @@ export function activate(context: vscode.ExtensionContext) {
             if (e.affectsConfiguration('pyroscope')) {
                 decorationManager.updateDecorations();
             }
+        })
+    );
+
+    // Register debug info command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('pyroscope.showDebugInfo', () => {
+            const logger = getLogger();
+            logger.info('=== Debug Info ===');
+
+            const config = vscode.workspace.getConfiguration('pyroscope');
+            logger.info(`Server URL: ${config.get('serverUrl')}`);
+            logger.info(`Auth token: ${config.get('authToken') ? '(configured)' : '(none)'}`);
+            logger.info(`Display mode: ${config.get('displayMode')}`);
+            logger.info(`Color scheme: ${config.get('colorScheme')}`);
+            logger.info(`Threshold: ${config.get('threshold')}%`);
+            logger.info(`Debug logging: ${config.get('debugLogging')}`);
+
+            const pathMappings = config.get<any[]>('pathMappings', []);
+            logger.info(`Path mappings: ${pathMappings.length} configured`);
+            pathMappings.forEach((m, i) => {
+                logger.info(`  ${i + 1}. "${m.from}" → "${m.to}"`);
+            });
+
+            const workspaceFolders = vscode.workspace.workspaceFolders || [];
+            logger.info(`Workspace folders: ${workspaceFolders.length}`);
+            workspaceFolders.forEach((f) => {
+                logger.info(`  ${f.name}: ${f.uri.fsPath}`);
+            });
+
+            const profileInfo = profileStore.getProfileInfo();
+            if (profileInfo) {
+                logger.info(`Loaded profile: ${profileInfo.name}`);
+                logger.info(`  Timestamp: ${profileInfo.timestamp}`);
+
+                const metrics = profileStore.getAllMetrics();
+                logger.info(`  Files: ${metrics.size}`);
+                metrics.forEach((lines, filePath) => {
+                    logger.info(`    ${filePath}: ${lines.size} lines`);
+                });
+            } else {
+                logger.info('No profile loaded');
+            }
+
+            logger.show();
         })
     );
 }
