@@ -1,3 +1,16 @@
+# 1.0.0 (2026-02-10)
+
+
+### Bug Fixes
+
+* create dist directory before VSIX packaging ([32bff81](https://github.com/dowster/pyroscope-vscode-profiler/commit/32bff815808620734f95adf8c1354d6f5e474fba))
+* disable NPM publishing in semantic-release ([2fde0f7](https://github.com/dowster/pyroscope-vscode-profiler/commit/2fde0f7151b84ab87d0ca53b48ad740d770abe47))
+
+
+### Features
+
+* add GitHub CI/CD workflows with semantic versioning ([55a7ea5](https://github.com/dowster/pyroscope-vscode-profiler/commit/55a7ea5f8fb6acdd83f1d72b928f1756062f2733))
+
 # Changelog
 
 All notable changes to the "Pyroscope Profile Viewer" extension will be documented in this file.
