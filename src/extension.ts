@@ -44,7 +44,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Listen to configuration changes
     context.subscriptions.push(
-        vscode.workspace.onDidChangeConfiguration(e => {
+        vscode.workspace.onDidChangeConfiguration((e) => {
             if (e.affectsConfiguration('pyroscope')) {
                 decorationManager.updateDecorations();
             }

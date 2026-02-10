@@ -55,7 +55,7 @@ export async function parseProfile(buffer: Buffer): Promise<ParsedProfile> {
             longs: Number,
             enums: String,
             bytes: Buffer,
-            defaults: true
+            defaults: true,
         });
 
         // Extract string table (all strings are referenced by index)
@@ -69,7 +69,7 @@ export async function parseProfile(buffer: Buffer): Promise<ParsedProfile> {
         // Parse sample types
         const sampleTypes: SampleType[] = (profile.sampleType || []).map((st: any) => ({
             type: getString(st.type),
-            unit: getString(st.unit)
+            unit: getString(st.unit),
         }));
 
         // Parse functions
@@ -80,7 +80,7 @@ export async function parseProfile(buffer: Buffer): Promise<ParsedProfile> {
                 name: getString(fn.name),
                 systemName: getString(fn.systemName),
                 filename: getString(fn.filename),
-                startLine: fn.startLine || 0
+                startLine: fn.startLine || 0,
             });
         });
 
@@ -91,15 +91,15 @@ export async function parseProfile(buffer: Buffer): Promise<ParsedProfile> {
                 id: loc.id,
                 lines: (loc.line || []).map((line: any) => ({
                     functionId: line.functionId,
-                    line: line.line || 0
-                }))
+                    line: line.line || 0,
+                })),
             });
         });
 
         // Parse samples
         const samples: ProfileSample[] = (profile.sample || []).map((sample: any) => ({
             locationIds: sample.locationId || [],
-            values: sample.value || []
+            values: sample.value || [],
         }));
 
         return {
@@ -109,7 +109,7 @@ export async function parseProfile(buffer: Buffer): Promise<ParsedProfile> {
             functions,
             stringTable,
             timeNanos: profile.timeNanos || 0,
-            durationNanos: profile.durationNanos || 0
+            durationNanos: profile.durationNanos || 0,
         };
     } catch (error) {
         if (error instanceof Error) {
@@ -123,7 +123,7 @@ export async function parseProfile(buffer: Buffer): Promise<ParsedProfile> {
  * Get the index of a specific sample type (e.g., "cpu", "alloc_space")
  */
 export function getSampleTypeIndex(profile: ParsedProfile, typeName: string): number {
-    return profile.sampleTypes.findIndex(st =>
+    return profile.sampleTypes.findIndex((st) =>
         st.type.toLowerCase().includes(typeName.toLowerCase())
     );
 }

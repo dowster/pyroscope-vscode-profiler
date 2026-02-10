@@ -6,7 +6,7 @@ export class PyroscopeClient {
 
     constructor(serverUrl: string, authToken?: string) {
         this.client = createAuthenticatedClient(serverUrl, {
-            token: authToken
+            token: authToken,
         });
     }
 
@@ -30,9 +30,13 @@ export class PyroscopeClient {
             return [];
         } catch (error: any) {
             if (error.response) {
-                throw new Error(`Pyroscope API error: ${error.response.status} ${error.response.statusText}`);
+                throw new Error(
+                    `Pyroscope API error: ${error.response.status} ${error.response.statusText}`
+                );
             } else if (error.request) {
-                throw new Error('Failed to connect to Pyroscope server. Please check the URL and network connection.');
+                throw new Error(
+                    'Failed to connect to Pyroscope server. Please check the URL and network connection.'
+                );
             } else {
                 throw new Error(`Request error: ${error.message}`);
             }
@@ -62,9 +66,9 @@ export class PyroscopeClient {
                     query,
                     from,
                     until: now,
-                    format: 'pprof'
+                    format: 'pprof',
                 },
-                responseType: 'arraybuffer'
+                responseType: 'arraybuffer',
             });
 
             return Buffer.from(response.data);

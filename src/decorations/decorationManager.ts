@@ -20,7 +20,7 @@ export class DecorationManager {
         const languages = ['go', 'python', 'javascript', 'typescript'];
 
         this.hoverProvider = vscode.languages.registerHoverProvider(
-            languages.map(lang => ({ language: lang })),
+            languages.map((lang) => ({ language: lang })),
             provider
         );
     }
@@ -36,7 +36,7 @@ export class DecorationManager {
 
         const config = this.getConfig();
 
-        vscode.window.visibleTextEditors.forEach(editor => {
+        vscode.window.visibleTextEditors.forEach((editor) => {
             this.updateEditorDecorations(editor, config);
         });
     }
@@ -70,9 +70,9 @@ export class DecorationManager {
                         contentText: ` ${hint.text}`,
                         color: hint.color,
                         fontStyle: 'italic',
-                        margin: '0 0 0 1em'
-                    }
-                }
+                        margin: '0 0 0 1em',
+                    },
+                },
             };
 
             // Group by color
@@ -97,8 +97,8 @@ export class DecorationManager {
             const decorationType = vscode.window.createTextEditorDecorationType({
                 after: {
                     color: color,
-                    fontStyle: 'italic'
-                }
+                    fontStyle: 'italic',
+                },
             });
             this.decorationTypes.set(color, decorationType);
         }
@@ -109,8 +109,8 @@ export class DecorationManager {
      * Clear all decorations from all editors
      */
     private clearAllDecorations(): void {
-        this.decorationTypes.forEach(decorationType => {
-            vscode.window.visibleTextEditors.forEach(editor => {
+        this.decorationTypes.forEach((decorationType) => {
+            vscode.window.visibleTextEditors.forEach((editor) => {
                 editor.setDecorations(decorationType, []);
             });
         });
@@ -135,7 +135,7 @@ export class DecorationManager {
         return {
             displayMode: config.get<'cpu' | 'memory' | 'both'>('displayMode', 'both'),
             colorScheme: config.get<'heatmap' | 'threshold' | 'minimal'>('colorScheme', 'heatmap'),
-            threshold: config.get<number>('threshold', 1.0)
+            threshold: config.get<number>('threshold', 1.0),
         };
     }
 
@@ -144,7 +144,7 @@ export class DecorationManager {
      */
     public dispose(): void {
         this.clearAllDecorations();
-        this.decorationTypes.forEach(decorationType => decorationType.dispose());
+        this.decorationTypes.forEach((decorationType) => decorationType.dispose());
         this.decorationTypes.clear();
 
         if (this.hoverProvider) {

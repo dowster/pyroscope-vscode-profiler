@@ -13,9 +13,9 @@ export function registerLoadProfileCommand(profileStore: ProfileStore): vscode.D
                 canSelectMany: false,
                 filters: {
                     'Profile Files': ['pb.gz', 'pb', 'pprof'],
-                    'All Files': ['*']
+                    'All Files': ['*'],
                 },
-                openLabel: 'Load Profile'
+                openLabel: 'Load Profile',
             });
 
             if (!fileUris || fileUris.length === 0) {
@@ -30,7 +30,7 @@ export function registerLoadProfileCommand(profileStore: ProfileStore): vscode.D
                 {
                     location: vscode.ProgressLocation.Notification,
                     title: 'Loading Pyroscope Profile',
-                    cancellable: false
+                    cancellable: false,
                 },
                 async (progress) => {
                     progress.report({ message: 'Decompressing...' });
@@ -54,7 +54,7 @@ export function registerLoadProfileCommand(profileStore: ProfileStore): vscode.D
                     // Show summary
                     const fileCount = metrics.size;
                     let totalLines = 0;
-                    metrics.forEach(fileMetrics => {
+                    metrics.forEach((fileMetrics) => {
                         totalLines += fileMetrics.size;
                     });
 

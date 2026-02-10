@@ -14,8 +14,8 @@ export function createAuthenticatedClient(baseURL: string, authConfig: AuthConfi
         baseURL,
         timeout: 30000,
         headers: {
-            'Content-Type': 'application/json'
-        }
+            'Content-Type': 'application/json',
+        },
     };
 
     // Add authentication
@@ -24,7 +24,7 @@ export function createAuthenticatedClient(baseURL: string, authConfig: AuthConfi
     } else if (authConfig.username && authConfig.password) {
         config.auth = {
             username: authConfig.username,
-            password: authConfig.password
+            password: authConfig.password,
         };
     }
 

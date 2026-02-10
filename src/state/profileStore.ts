@@ -20,7 +20,7 @@ export class ProfileStore {
         this.metrics = metrics;
         this.profileInfo = {
             name,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         this.changeEmitter.fire();
     }

@@ -2,7 +2,9 @@ import * as vscode from 'vscode';
 import { ProfileStore } from '../state/profileStore';
 import { DecorationManager } from '../decorations/decorationManager';
 
-export function registerToggleHintsCommand(decorationManager: DecorationManager): vscode.Disposable {
+export function registerToggleHintsCommand(
+    decorationManager: DecorationManager
+): vscode.Disposable {
     return vscode.commands.registerCommand('pyroscope.toggleHints', () => {
         decorationManager.toggleHints();
     });

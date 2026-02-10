@@ -26,14 +26,18 @@ export function mapSamplesToSource(profile: ParsedProfile): ProfileMetrics {
     // Find sample type indices
     const cpuIndex = findSampleTypeIndex(profile, ['cpu', 'samples', 'sample']);
     const allocSpaceIndex = findSampleTypeIndex(profile, ['alloc_space', 'allocated', 'bytes']);
-    const allocObjectsIndex = findSampleTypeIndex(profile, ['alloc_objects', 'allocations', 'count']);
+    const allocObjectsIndex = findSampleTypeIndex(profile, [
+        'alloc_objects',
+        'allocations',
+        'count',
+    ]);
     const inuseSpaceIndex = findSampleTypeIndex(profile, ['inuse_space', 'inuse']);
 
     // Calculate totals for percentage calculations
     let totalCpu = 0;
     let totalMemory = 0;
 
-    profile.samples.forEach(sample => {
+    profile.samples.forEach((sample) => {
         if (cpuIndex !== -1 && sample.values[cpuIndex]) {
             totalCpu += sample.values[cpuIndex];
         }
@@ -45,7 +49,7 @@ export function mapSamplesToSource(profile: ParsedProfile): ProfileMetrics {
     });
 
     // Process each sample
-    profile.samples.forEach(sample => {
+    profile.samples.forEach((sample) => {
         // Get the stack trace for this sample
         const stack = getStackTrace(sample, profile);
 
@@ -80,7 +84,7 @@ export function mapSamplesToSource(profile: ParsedProfile): ProfileMetrics {
                     memoryPercent: 0,
                     allocations: 0,
                     selfCpuPercent: 0,
-                    selfMemoryPercent: 0
+                    selfMemoryPercent: 0,
                 };
                 fileMetrics.set(frame.line, lineMetrics);
             }
@@ -117,8 +121,8 @@ export function mapSamplesToSource(profile: ParsedProfile): ProfileMetrics {
     });
 
     // Calculate percentages
-    metricsMap.forEach(fileMetrics => {
-        fileMetrics.forEach(lineMetrics => {
+    metricsMap.forEach((fileMetrics) => {
+        fileMetrics.forEach((lineMetrics) => {
             if (totalCpu > 0) {
                 lineMetrics.cpuPercent = (lineMetrics.cpuSamples / totalCpu) * 100;
                 lineMetrics.selfCpuPercent = (lineMetrics.selfCpuPercent / totalCpu) * 100;
@@ -151,13 +155,13 @@ function getStackTrace(sample: any, profile: ParsedProfile): StackFrame[] {
             return;
         }
 
-        location.lines.forEach(line => {
+        location.lines.forEach((line) => {
             const func = profile.functions.get(line.functionId);
             if (func) {
                 frames.push({
                     filename: func.filename,
                     line: line.line,
-                    functionName: func.name || func.systemName
+                    functionName: func.name || func.systemName,
                 });
             }
         });

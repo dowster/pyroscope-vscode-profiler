@@ -27,7 +27,7 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
                     {
                         location: vscode.ProgressLocation.Notification,
                         title: 'Connecting to Pyroscope...',
-                        cancellable: false
+                        cancellable: false,
                     },
                     async () => await client.getApplications()
                 );
@@ -44,7 +44,7 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
 
             // Show application picker
             const selectedApp = await vscode.window.showQuickPick(apps, {
-                placeHolder: 'Select an application'
+                placeHolder: 'Select an application',
             });
 
             if (!selectedApp) {
@@ -56,11 +56,11 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
                 { label: 'Last 1 hour', value: 3600 },
                 { label: 'Last 6 hours', value: 21600 },
                 { label: 'Last 24 hours', value: 86400 },
-                { label: 'Last 7 days', value: 604800 }
+                { label: 'Last 7 days', value: 604800 },
             ];
 
             const selectedTimeRange = await vscode.window.showQuickPick(timeRanges, {
-                placeHolder: 'Select time range'
+                placeHolder: 'Select time range',
             });
 
             if (!selectedTimeRange) {
@@ -72,7 +72,7 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
                 {
                     location: vscode.ProgressLocation.Notification,
                     title: 'Fetching Profile from Pyroscope',
-                    cancellable: false
+                    cancellable: false,
                 },
                 async (progress) => {
                     progress.report({ message: 'Downloading profile...' });
@@ -98,7 +98,7 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
                     // Show summary
                     const fileCount = metrics.size;
                     let totalLines = 0;
-                    metrics.forEach(fileMetrics => {
+                    metrics.forEach((fileMetrics) => {
                         totalLines += fileMetrics.size;
                     });
 
