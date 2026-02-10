@@ -1,0 +1,103 @@
+{
+  "name": "pyroscope-vscode-profiler",
+  "displayName": "Pyroscope Profile Viewer",
+  "description": "Display inline CPU and memory profiling hints from Pyroscope in VS Code",
+  "version": "0.1.0",
+  "publisher": "fetchrewards",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:go",
+    "onLanguage:python",
+    "onLanguage:javascript",
+    "onLanguage:typescript"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "pyroscope.loadProfile",
+        "title": "Pyroscope: Load Profile from File"
+      },
+      {
+        "command": "pyroscope.fetchFromPyroscope",
+        "title": "Pyroscope: Fetch Profile from Pyroscope"
+      },
+      {
+        "command": "pyroscope.toggleHints",
+        "title": "Pyroscope: Toggle Hints"
+      },
+      {
+        "command": "pyroscope.clearProfile",
+        "title": "Pyroscope: Clear Profile"
+      }
+    ],
+    "configuration": {
+      "title": "Pyroscope Profile Viewer",
+      "properties": {
+        "pyroscope.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:4040",
+          "description": "Pyroscope server URL"
+        },
+        "pyroscope.authToken": {
+          "type": "string",
+          "default": "",
+          "description": "Optional authentication token for Pyroscope server"
+        },
+        "pyroscope.displayMode": {
+          "type": "string",
+          "enum": [
+            "cpu",
+            "memory",
+            "both"
+          ],
+          "default": "both",
+          "description": "Which metrics to display: CPU only, memory only, or both"
+        },
+        "pyroscope.colorScheme": {
+          "type": "string",
+          "enum": [
+            "heatmap",
+            "threshold",
+            "minimal"
+          ],
+          "default": "heatmap",
+          "description": "Color coding strategy for hints"
+        },
+        "pyroscope.threshold": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Minimum percentage to display hints (0-100)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/pako": "^2.0.4",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "pako": "^2.1.0",
+    "protobufjs": "^7.2.5"
+  }
+}
