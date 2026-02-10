@@ -47,6 +47,7 @@ export async function parseProfile(buffer: Buffer): Promise<ParsedProfile> {
         // Load the protobuf definition
         const protoPath = path.join(__dirname, '../../proto/profile.proto');
         const root = await protobuf.load(protoPath);
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         const Profile = root.lookupType('perftools.profiles.Profile');
 
         // Decode the protobuf message

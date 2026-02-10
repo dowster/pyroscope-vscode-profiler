@@ -127,7 +127,9 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
                         logger.warn('⚠ Profile fetched but NO files matched!');
                         logger.info('💡 Possible reasons:');
                         logger.info("   - Paths in profile don't match local workspace");
-                        logger.info('   - Configure path mappings in settings (pyroscope.pathMappings)');
+                        logger.info(
+                            '   - Configure path mappings in settings (pyroscope.pathMappings)'
+                        );
                         logger.info('   - Run "Pyroscope: Show Debug Info" for details');
 
                         const action = await vscode.window.showWarningMessage(

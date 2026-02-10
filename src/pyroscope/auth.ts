@@ -14,6 +14,7 @@ export function createAuthenticatedClient(baseURL: string, authConfig: AuthConfi
         baseURL,
         timeout: 30000,
         headers: {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             'Content-Type': 'application/json',
         },
     };

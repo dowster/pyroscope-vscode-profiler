@@ -18,7 +18,9 @@ export function registerLoadProfileCommand(profileStore: ProfileStore): vscode.D
             const fileUris = await vscode.window.showOpenDialog({
                 canSelectMany: false,
                 filters: {
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
                     'Profile Files': ['pb.gz', 'pb', 'pprof'],
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
                     'All Files': ['*'],
                 },
                 openLabel: 'Load Profile',
@@ -66,7 +68,9 @@ export function registerLoadProfileCommand(profileStore: ProfileStore): vscode.D
                         logger.warn('⚠ Profile loaded but NO files matched!');
                         logger.info('💡 Possible reasons:');
                         logger.info("   - Paths in profile don't match local workspace");
-                        logger.info('   - Configure path mappings in settings (pyroscope.pathMappings)');
+                        logger.info(
+                            '   - Configure path mappings in settings (pyroscope.pathMappings)'
+                        );
                         logger.info('   - Run "Pyroscope: Show Debug Info" for details');
 
                         const action = await vscode.window.showWarningMessage(
