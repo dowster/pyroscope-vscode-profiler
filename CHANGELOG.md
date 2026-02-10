@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.0.0...v1.1.0) (2026-02-10)
+
+
+### Features
+
+* add debug logging and configurable path remapping ([5c743a0](https://github.com/dowster/pyroscope-vscode-profiler/commit/5c743a0c16cdbd2c503186fe5648b52994cb582c))
+
 # 1.0.0 (2026-02-10)
 
 
