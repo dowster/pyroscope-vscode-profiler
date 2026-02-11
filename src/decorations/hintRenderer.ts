@@ -42,22 +42,22 @@ export function renderHint(
 function renderSingleProfileHint(metrics: LineMetrics, config: HintConfig): RenderedHint | null {
     const parts: string[] = [];
 
-    // Check threshold
-    const maxPercent = Math.max(metrics.selfCpuPercent, metrics.selfMemoryPercent);
+    // Check threshold using cumulative values
+    const maxPercent = Math.max(metrics.cpuPercent, metrics.memoryPercent);
     if (maxPercent < config.threshold) {
         return null;
     }
 
     // Add CPU info
     if (config.displayMode === 'cpu' || config.displayMode === 'both') {
-        if (metrics.selfCpuPercent > 0) {
-            // Show percentage and absolute time if available
-            if (metrics.selfCpuNanoseconds > 0) {
+        if (metrics.cpuPercent > 0) {
+            // Show cumulative percentage and absolute time if available
+            if (metrics.cpuNanoseconds > 0) {
                 parts.push(
-                    `CPU: ${formatPercent(metrics.selfCpuPercent)} (${formatNanoseconds(metrics.selfCpuNanoseconds)})`
+                    `CPU: ${formatPercent(metrics.cpuPercent)} (${formatNanoseconds(metrics.cpuNanoseconds)})`
                 );
             } else {
-                parts.push(`CPU: ${formatPercent(metrics.selfCpuPercent)}`);
+                parts.push(`CPU: ${formatPercent(metrics.cpuPercent)}`);
             }
         }
     }
@@ -151,35 +151,35 @@ function renderMultiProfileHint(
         let percent: number;
 
         if (unit === 'nanoseconds') {
-            // CPU profile - show percentage and absolute time
-            percent = metrics.selfCpuPercent;
+            // CPU profile - show cumulative percentage and absolute time
+            percent = metrics.cpuPercent;
             if (percent < config.threshold) {
                 return;
             }
             // Show both percentage and absolute nanoseconds
-            if (metrics.selfCpuNanoseconds > 0) {
-                text = `${profileName}: ${formatPercent(percent)} (${formatNanoseconds(metrics.selfCpuNanoseconds)})`;
+            if (metrics.cpuNanoseconds > 0) {
+                text = `${profileName}: ${formatPercent(percent)} (${formatNanoseconds(metrics.cpuNanoseconds)})`;
             } else {
                 text = `${profileName}: ${formatPercent(percent)}`;
             }
         } else if (unit === 'bytes') {
-            // Memory profile - show formatted bytes and percentage
-            percent = metrics.selfMemoryPercent;
+            // Memory profile - show formatted bytes and cumulative percentage
+            percent = metrics.memoryPercent;
             if (percent < config.threshold) {
                 return;
             }
             text = `${profileName}: ${formatBytes(metrics.memoryBytes)} (${formatPercent(percent)})`;
         } else if (unit === 'count') {
-            // Goroutines, blocks, mutex, etc.
-            percent = metrics.selfCpuPercent; // Reuse cpuPercent field for generic percentage
+            // Goroutines, blocks, mutex, etc. - use cumulative count
+            percent = metrics.cpuPercent; // Reuse cpuPercent field for generic percentage
             if (percent < config.threshold) {
                 return;
             }
             const count = metrics.cpuSamples; // Reuse cpuSamples for generic count
             text = `${profileName}: ${count.toLocaleString()}`;
         } else {
-            // Unknown unit - generic display
-            percent = metrics.selfCpuPercent;
+            // Unknown unit - generic display using cumulative
+            percent = metrics.cpuPercent;
             if (percent < config.threshold) {
                 return;
             }
