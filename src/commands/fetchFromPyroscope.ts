@@ -60,6 +60,19 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
                 return;
             }
 
+            // Sort apps to put repo name first if it exists
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (workspaceFolders && workspaceFolders.length > 0) {
+                const repoName = workspaceFolders[0].name;
+                const repoIndex = apps.indexOf(repoName);
+                if (repoIndex > 0) {
+                    // Move repo name to front
+                    apps.splice(repoIndex, 1);
+                    apps.unshift(repoName);
+                    logger.debug(`Moved ${repoName} to front of application list`);
+                }
+            }
+
             // Show application picker
             const selectedApp = await vscode.window.showQuickPick(apps, {
                 placeHolder: 'Select an application',
