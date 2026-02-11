@@ -1,3 +1,12 @@
+## [1.1.1](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.1.0...v1.1.1) (2026-02-11)
+
+
+### Bug Fixes
+
+* build VSIX after semantic-release version bump ([2c2c6b9](https://github.com/dowster/pyroscope-vscode-profiler/commit/2c2c6b909cd0226f8d92e2b2abbd3ba62855af87))
+* client updates to current spec ([2a4add4](https://github.com/dowster/pyroscope-vscode-profiler/commit/2a4add4d06a0ee6fc4d03f8627a507a9b16e682e))
+* update packages ([a1756e1](https://github.com/dowster/pyroscope-vscode-profiler/commit/a1756e1d7ede3be184b4ac9efd6cf9b18cb454d9))
+
 # [1.1.0](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.0.0...v1.1.0) (2026-02-10)
 
 

@@ -2,7 +2,7 @@
   "name": "pyroscope-vscode-profiler",
   "displayName": "Pyroscope Profile Viewer",
   "description": "Display inline CPU and memory profiling hints from Pyroscope in VS Code",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "fetchrewards",
   "engines": {
     "vscode": "^1.85.0"
