@@ -1,3 +1,16 @@
+# [1.3.0](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.2.0...v1.3.0) (2026-02-11)
+
+
+### Bug Fixes
+
+* add comma formatting to hint renderer numbers ([b53ea04](https://github.com/dowster/pyroscope-vscode-profiler/commit/b53ea04b63c7d4f2d432c003e2c7726ef0279d8f))
+* correct self vs cumulative attribution for inlined functions ([b16acbf](https://github.com/dowster/pyroscope-vscode-profiler/commit/b16acbf88597269c90803d95c71c85289a6b508c))
+
+
+### Features
+
+* add human-readable formatting for time and bytes ([c6e5741](https://github.com/dowster/pyroscope-vscode-profiler/commit/c6e57414edb2eaf2c1b54bd6995a09467ffa8ed3))
+
 # [1.2.0](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.1.2...v1.2.0) (2026-02-11)
 
 
