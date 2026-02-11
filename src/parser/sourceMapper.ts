@@ -30,6 +30,14 @@ export async function mapSamplesToSource(
     const logger = getLogger();
     const metricsMap = new Map<string, FileMetrics>();
 
+    // Log all sample types in the profile
+    if (shouldLogDebug()) {
+        logger.debug(`Profile sample types (${profile.sampleTypes.length}):`);
+        profile.sampleTypes.forEach((st, idx) => {
+            logger.debug(`  [${idx}] ${st.type} (${st.unit})`);
+        });
+    }
+
     // Find sample type indices
     const cpuIndex = findSampleTypeIndex(profile, ['cpu', 'samples', 'sample']);
     const allocSpaceIndex = findSampleTypeIndex(profile, ['alloc_space', 'allocated', 'bytes']);
@@ -39,6 +47,20 @@ export async function mapSamplesToSource(
         'count',
     ]);
     const inuseSpaceIndex = findSampleTypeIndex(profile, ['inuse_space', 'inuse']);
+
+    logger.info(
+        `Sample type indices: cpu=${cpuIndex}, allocSpace=${allocSpaceIndex}, allocObjects=${allocObjectsIndex}, inuseSpace=${inuseSpaceIndex}`
+    );
+
+    // Warn if we couldn't find any sample types
+    if (cpuIndex === -1 && allocSpaceIndex === -1 && inuseSpaceIndex === -1) {
+        logger.warn(
+            '⚠️  Could not find any recognized sample types in profile! Metrics may be incorrect.'
+        );
+        logger.warn(
+            'This usually means the profile type is not supported or the sample type names do not match.'
+        );
+    }
 
     // Log unique paths from profile
     const uniquePaths = new Set<string>();
@@ -71,6 +93,10 @@ export async function mapSamplesToSource(
         }
     });
 
+    logger.info(
+        `Processing ${profile.samples.length} samples: totalCpu=${totalCpu}, totalMemory=${totalMemory}`
+    );
+
     // Process each sample
     // Yield to event loop every N samples to keep UI responsive
     const YIELD_INTERVAL = 1000;
@@ -86,7 +112,7 @@ export async function mapSamplesToSource(
         const stack = getStackTrace(sample, profile);
 
         // Process each frame in the stack
-        stack.forEach((frame, index) => {
+        stack.forEach((frame) => {
             if (!frame.filename || frame.line === 0) {
                 return;
             }
@@ -123,7 +149,8 @@ export async function mapSamplesToSource(
             }
 
             // Accumulate metrics
-            const isSelfFrame = index === 0; // First frame is "self" time
+            // locationIndex 0 = leaf (self time), 1+ = callers (cumulative only)
+            const isSelfFrame = frame.locationIndex === 0;
 
             if (cpuIndex !== -1 && sample.values[cpuIndex]) {
                 const cpuValue = sample.values[cpuIndex];
@@ -183,15 +210,17 @@ interface StackFrame {
     filename: string;
     line: number;
     functionName: string;
+    locationIndex: number; // Track which location this frame came from
 }
 
 /**
  * Extracts the stack trace from a sample
+ * locationIndex tracks which location (0 = leaf/self) each frame came from
  */
 function getStackTrace(sample: any, profile: ParsedProfile): StackFrame[] {
     const frames: StackFrame[] = [];
 
-    sample.locationIds.forEach((locationId: number) => {
+    sample.locationIds.forEach((locationId: number, locationIndex: number) => {
         const location = profile.locations.get(locationId);
         if (!location) {
             return;
@@ -204,6 +233,7 @@ function getStackTrace(sample: any, profile: ParsedProfile): StackFrame[] {
                     filename: func.filename,
                     line: line.line,
                     functionName: func.name || func.systemName,
+                    locationIndex, // 0 = leaf (self), 1+ = callers (cumulative only)
                 });
             }
         });
