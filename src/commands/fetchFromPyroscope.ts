@@ -120,7 +120,7 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
 
                     progress.report({ message: 'Mapping to source files...' });
                     const pathResolver = new PathResolver(logger);
-                    const metrics = mapSamplesToSource(parsed, pathResolver);
+                    const metrics = await mapSamplesToSource(parsed, pathResolver);
 
                     // Check results
                     if (metrics.size === 0) {

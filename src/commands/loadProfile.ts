@@ -61,7 +61,7 @@ export function registerLoadProfileCommand(profileStore: ProfileStore): vscode.D
 
                     // Map samples to source locations with PathResolver
                     const pathResolver = new PathResolver(logger);
-                    const metrics = mapSamplesToSource(parsed, pathResolver);
+                    const metrics = await mapSamplesToSource(parsed, pathResolver);
 
                     // Check results
                     if (metrics.size === 0) {

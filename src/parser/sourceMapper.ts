@@ -21,11 +21,12 @@ export type ProfileMetrics = Map<string, FileMetrics>;
 
 /**
  * Maps profile samples to source code locations and calculates metrics per line
+ * This function yields to the event loop periodically to keep the UI responsive
  */
-export function mapSamplesToSource(
+export async function mapSamplesToSource(
     profile: ParsedProfile,
     pathResolver: PathResolver
-): ProfileMetrics {
+): Promise<ProfileMetrics> {
     const logger = getLogger();
     const metricsMap = new Map<string, FileMetrics>();
 
@@ -71,7 +72,16 @@ export function mapSamplesToSource(
     });
 
     // Process each sample
-    profile.samples.forEach((sample) => {
+    // Yield to event loop every N samples to keep UI responsive
+    const YIELD_INTERVAL = 1000;
+    for (let sampleIdx = 0; sampleIdx < profile.samples.length; sampleIdx++) {
+        const sample = profile.samples[sampleIdx];
+
+        // Yield to event loop periodically to prevent UI freeze
+        if (sampleIdx % YIELD_INTERVAL === 0 && sampleIdx > 0) {
+            await new Promise((resolve) => setImmediate(resolve));
+        }
+
         // Get the stack trace for this sample
         const stack = getStackTrace(sample, profile);
 
@@ -141,7 +151,7 @@ export function mapSamplesToSource(
                 lineMetrics.allocations += sample.values[allocObjectsIndex];
             }
         });
-    });
+    }
 
     // Calculate percentages
     metricsMap.forEach((fileMetrics) => {
