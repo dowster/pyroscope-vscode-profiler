@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.1.2...v1.2.0) (2026-02-11)
+
+
+### Features
+
+* add configurable multi-profile type support ([f09ab6b](https://github.com/dowster/pyroscope-vscode-profiler/commit/f09ab6bd6df63d7b9f206f35c35b4e0adc7fda58))
+
 ## [1.1.2](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.1.1...v1.1.2) (2026-02-11)
 
 
