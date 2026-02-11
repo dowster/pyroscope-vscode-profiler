@@ -1,3 +1,18 @@
+# [1.4.0](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.3.0...v1.4.0) (2026-02-11)
+
+
+### Bug Fixes
+
+* display cumulative values in inline hints instead of self ([68d08bc](https://github.com/dowster/pyroscope-vscode-profiler/commit/68d08bc95edd6eb6e84eec41cda5cdd132693f2c))
+
+
+### Features
+
+* add absolute time display for CPU profiles ([fd10986](https://github.com/dowster/pyroscope-vscode-profiler/commit/fd10986d2e655a4a6bb419a25296adeaf8d8f523))
+* add default path mappings for GitHub Actions build paths ([0301595](https://github.com/dowster/pyroscope-vscode-profiler/commit/03015950ccccba8798d30de1af89738158d1958e))
+* add deployment environment selection when fetching profiles ([5a622a5](https://github.com/dowster/pyroscope-vscode-profiler/commit/5a622a5eeaac6789208a201081f2936cd46da35d))
+* default service selection to repo name when fetching profiles ([9ee7cb5](https://github.com/dowster/pyroscope-vscode-profiler/commit/9ee7cb5f07f29c1260978359744954f684445605))
+
 # [1.3.0](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.2.0...v1.3.0) (2026-02-11)
 
 
