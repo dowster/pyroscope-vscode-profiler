@@ -25,23 +25,25 @@ export class PyroscopeClient {
     }
 
     /**
-     * Get list of service names from Pyroscope (Grafana Pyroscope uses gRPC-gateway)
+     * Get label values from Pyroscope
+     * @param labelName - The label name to query (e.g., "service_name", "deployment_environment")
+     * @returns Array of label values
      */
-    async getApplications(): Promise<string[]> {
+    async getLabelValues(labelName: string): Promise<string[]> {
         // Strip /pyroscope suffix if present - gRPC endpoints are at root
         const baseUrl = this.client.defaults.baseURL || '';
         const grpcBaseUrl = baseUrl.replace(/\/pyroscope\/?$/, '');
 
         const url = '/querier.v1.QuerierService/LabelValues';
         if (shouldLogDebug()) {
-            this.logger.debug(`POST ${grpcBaseUrl}${url}`);
+            this.logger.debug(`POST ${grpcBaseUrl}${url} (label: ${labelName})`);
         }
 
         try {
             const response = await this.client.post(
                 url,
                 {
-                    name: 'service_name',
+                    name: labelName,
                 },
                 {
                     baseURL: grpcBaseUrl,
@@ -51,9 +53,9 @@ export class PyroscopeClient {
                 this.logger.debug(`Response: ${response.status} ${response.statusText}`);
             }
 
-            // Response format: {"names": ["service1", "service2", ...]}
+            // Response format: {"names": ["value1", "value2", ...]}
             if (response.data && Array.isArray(response.data.names)) {
-                this.logger.info(`Found ${response.data.names.length} services`);
+                this.logger.info(`Found ${response.data.names.length} values for ${labelName}`);
                 return response.data.names;
             }
 
@@ -79,15 +81,31 @@ export class PyroscopeClient {
     }
 
     /**
+     * Get list of service names from Pyroscope (Grafana Pyroscope uses gRPC-gateway)
+     */
+    async getApplications(): Promise<string[]> {
+        return this.getLabelValues('service_name');
+    }
+
+    /**
+     * Get list of deployment environments from Pyroscope
+     */
+    async getEnvironments(): Promise<string[]> {
+        return this.getLabelValues('deployment_environment');
+    }
+
+    /**
      * Fetch a profile from Pyroscope using the gRPC-gateway endpoint
      * @param appName - Service name to query
      * @param durationSeconds - Time range in seconds (from now back)
      * @param profileType - Type of profile (process_cpu, memory, etc.)
+     * @param environment - Optional deployment environment to filter by
      */
     async fetchProfile(
         appName: string,
         durationSeconds: number = 3600,
-        profileType: string = 'process_cpu'
+        profileType: string = 'process_cpu',
+        environment?: string
     ): Promise<Buffer> {
         try {
             const now = Math.floor(Date.now() / 1000);
@@ -128,11 +146,22 @@ export class PyroscopeClient {
                 'querier.v1.SelectMergeProfileRequest'
             );
 
+            // Build label selector with service_name and optional environment
+            let labelSelector = `{service_name="${appName}"`;
+            if (environment) {
+                labelSelector += `,deployment_environment="${environment}"`;
+            }
+            labelSelector += '}';
+
+            if (shouldLogDebug()) {
+                this.logger.debug(`Label selector: ${labelSelector}`);
+            }
+
             // Create and encode the request message as protobuf binary
             // Note: Field names must match proto exactly when using keepCase: true
             const requestMessage = selectMergeProfileRequest.create({
                 profile_typeID: profileTypeId,
-                label_selector: `{service_name="${appName}"}`,
+                label_selector: labelSelector,
                 start: from * 1000, // Convert to milliseconds
                 end: now * 1000,
                 max_nodes: 8192, // Sufficient for detailed profiles

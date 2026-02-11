@@ -72,6 +72,55 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
 
             logger.info(`Selected application: ${selectedApp}`);
 
+            // Get available environments
+            let environments: string[];
+            try {
+                logger.info('Fetching environments...');
+                environments = await vscode.window.withProgress(
+                    {
+                        location: vscode.ProgressLocation.Notification,
+                        title: 'Fetching environments...',
+                        cancellable: false,
+                    },
+                    async () => await client.getEnvironments()
+                );
+                logger.info(`Found ${environments.length} environments`);
+
+                if (shouldLogDebug()) {
+                    logger.debug(`Environments: ${environments.join(', ')}`);
+                }
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Unknown error';
+                logger.error(`Failed to fetch environments: ${message}`);
+                // Continue without environment filter if this fails
+                environments = [];
+            }
+
+            // Show environment picker if environments are available
+            let selectedEnvironment: string | undefined;
+            if (environments.length > 0) {
+                // Add an "All Environments" option
+                const envOptions = ['All Environments', ...environments];
+
+                const selectedEnv = await vscode.window.showQuickPick(envOptions, {
+                    placeHolder: 'Select deployment environment',
+                });
+
+                if (!selectedEnv) {
+                    logger.info('Environment selection cancelled');
+                    return;
+                }
+
+                if (selectedEnv !== 'All Environments') {
+                    selectedEnvironment = selectedEnv;
+                    logger.info(`Selected environment: ${selectedEnvironment}`);
+                } else {
+                    logger.info('Selected all environments (no filter)');
+                }
+            } else {
+                logger.info('No environments available, skipping environment selection');
+            }
+
             // Show time range picker
             const timeRanges = [
                 { label: 'Last 1 hour', value: 3600 },
@@ -173,7 +222,8 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
                             const profileData = await client.fetchProfile(
                                 selectedApp,
                                 selectedTimeRange.value,
-                                type.id
+                                type.id,
+                                selectedEnvironment
                             );
                             logger.info(`  ${type.name}: Fetched ${profileData.length} bytes`);
 
@@ -232,7 +282,11 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
             }
 
             // Store the profiles
-            const sessionName = `${selectedApp} (${selectedTimeRange.label})`;
+            let sessionName = selectedApp;
+            if (selectedEnvironment) {
+                sessionName += ` [${selectedEnvironment}]`;
+            }
+            sessionName += ` (${selectedTimeRange.label})`;
             profileStore.loadProfiles(profileEntries, sessionName);
 
             // Show success message
