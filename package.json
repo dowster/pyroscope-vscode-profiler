@@ -151,7 +151,7 @@
     "lint-staged": "^16.2.7",
     "mocha": "^10.2.0",
     "prettier": "^3.1.1",
-    "semantic-release": "^22.0.12",
+    "semantic-release": "^24",
     "typescript": "^5.3.3"
   },
   "dependencies": {
