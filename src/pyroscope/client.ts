@@ -4,6 +4,15 @@ import { getLogger, shouldLogDebug } from '../utils/logger';
 import * as protobuf from 'protobufjs';
 import * as path from 'path';
 
+export interface ProfileType {
+    id: string;
+    name: string;
+    sampleType: string;
+    sampleUnit: string;
+    periodType: string;
+    periodUnit: string;
+}
+
 export class PyroscopeClient {
     private client: AxiosInstance;
     private logger: ReturnType<typeof getLogger>;
@@ -195,6 +204,96 @@ export class PyroscopeClient {
         };
 
         return typeMap[profileType] || typeMap['cpu'];
+    }
+
+    /**
+     * Get available profile types for a time range
+     * @param startTime - Start time in seconds (unix timestamp)
+     * @param endTime - End time in seconds (unix timestamp)
+     * @returns Array of available profile types
+     */
+    async getProfileTypes(startTime: number, endTime: number): Promise<ProfileType[]> {
+        try {
+            // Strip /pyroscope suffix if present - gRPC endpoints are at root
+            const baseUrl = this.client.defaults.baseURL || '';
+            const grpcBaseUrl = baseUrl.replace(/\/pyroscope\/?$/, '');
+
+            const url = '/querier.v1.QuerierService/ProfileTypes';
+            if (shouldLogDebug()) {
+                this.logger.debug(`POST ${grpcBaseUrl}${url}`);
+                this.logger.debug(`Request: start=${startTime * 1000}, end=${endTime * 1000}`);
+            }
+
+            // Load protobuf definition
+            const protoRoot = path.join(__dirname, '../../proto');
+            const root = new protobuf.Root();
+            root.resolvePath = (_origin: string, target: string) => {
+                if (path.isAbsolute(target)) {
+                    return target;
+                }
+                return path.join(protoRoot, target);
+            };
+
+            await root.load('querier/v1/querier.proto', { keepCase: true });
+            const requestType = root.lookupType('querier.v1.ProfileTypesRequest');
+            const responseType = root.lookupType('querier.v1.ProfileTypesResponse');
+
+            // Create and encode request
+            const requestMessage = requestType.create({
+                start: startTime * 1000, // Convert to milliseconds
+                end: endTime * 1000,
+            });
+            const requestBuffer = requestType.encode(requestMessage).finish();
+
+            if (shouldLogDebug()) {
+                this.logger.debug(`Request size: ${requestBuffer.length} bytes (protobuf)`);
+            }
+
+            // Make request
+            const response = await this.client.post(url, Buffer.from(requestBuffer), {
+                baseURL: grpcBaseUrl,
+                responseType: 'arraybuffer',
+                headers: {
+                    'Content-Type': 'application/proto',
+                },
+            });
+
+            if (shouldLogDebug()) {
+                this.logger.debug(`Response: ${response.status}, ${response.data.length} bytes`);
+            }
+
+            // Decode response
+            const responseMessage = responseType.decode(new Uint8Array(response.data));
+            const responseObj = responseMessage.toJSON();
+            const profileTypes = (responseObj.profile_types || []) as any[];
+
+            if (shouldLogDebug()) {
+                this.logger.debug(`Found ${profileTypes.length} profile types`);
+            }
+
+            // Parse and return profile types
+            return profileTypes.map((pt: any) => ({
+                id: pt.ID || '',
+                name: pt.name || '',
+                sampleType: pt.sample_type || '',
+                sampleUnit: pt.sample_unit || '',
+                periodType: pt.period_type || '',
+                periodUnit: pt.period_unit || '',
+            }));
+        } catch (error: any) {
+            this.logger.error(
+                `POST /querier.v1.QuerierService/ProfileTypes failed: ${error.message}`
+            );
+
+            if (error.response) {
+                this.logger.error(`  Status: ${error.response.status}`);
+                throw new Error(`Failed to fetch profile types: ${error.response.status}`);
+            } else if (error.request) {
+                throw new Error('Failed to connect to Pyroscope server');
+            } else {
+                throw new Error(`Request error: ${error.message}`);
+            }
+        }
     }
 
     /**

@@ -61,7 +61,15 @@
             "both"
           ],
           "default": "both",
-          "description": "Which metrics to display: CPU only, memory only, or both"
+          "markdownDescription": "**[DEPRECATED]** Which metrics to display: CPU only, memory only, or both. Use `displayProfiles` instead for multi-profile support."
+        },
+        "pyroscope.displayProfiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Which profile types to display in inline hints. Empty array means all loaded profiles. Example: `[\"cpu\", \"memory\"]`"
         },
         "pyroscope.colorScheme": {
           "type": "string",

@@ -85,10 +85,14 @@ export function activate(context: vscode.ExtensionContext) {
                 logger.info(`Loaded profile: ${profileInfo.name}`);
                 logger.info(`  Timestamp: ${profileInfo.timestamp}`);
 
-                const metrics = profileStore.getAllMetrics();
-                logger.info(`  Files: ${metrics.size}`);
-                metrics.forEach((lines, filePath) => {
-                    logger.info(`    ${filePath}: ${lines.size} lines`);
+                const profileNames = profileStore.getLoadedProfileNames();
+                logger.info(`  Profile types: ${profileNames.join(', ')}`);
+
+                profileNames.forEach((name) => {
+                    const entry = profileStore.getProfileEntry(name);
+                    if (entry) {
+                        logger.info(`  ${name}: ${entry.metrics.size} files`);
+                    }
                 });
             } else {
                 logger.info('No profile loaded');
@@ -102,8 +106,9 @@ export function activate(context: vscode.ExtensionContext) {
 function updateStatusBar() {
     const profileInfo = profileStore.getProfileInfo();
     if (profileInfo) {
+        const profileNames = profileStore.getLoadedProfileNames();
         statusBarItem.text = `$(flame) ${profileInfo.name}`;
-        statusBarItem.tooltip = `Pyroscope Profile: ${profileInfo.name}\nLoaded at: ${profileInfo.timestamp}\nClick to clear`;
+        statusBarItem.tooltip = `Loaded profiles: ${profileNames.join(', ')}\nFetched: ${profileInfo.timestamp}\nClick to clear`;
         statusBarItem.show();
     } else {
         statusBarItem.hide();

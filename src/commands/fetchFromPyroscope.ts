@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { ProfileStore } from '../state/profileStore';
-import { PyroscopeClient } from '../pyroscope/client';
+import { ProfileStore, ProfileEntry } from '../state/profileStore';
+import { PyroscopeClient, ProfileType } from '../pyroscope/client';
 import { decompressBuffer } from '../parser/decompressor';
 import { parseProfile } from '../parser/pprofParser';
 import { mapSamplesToSource } from '../parser/sourceMapper';
@@ -91,79 +91,161 @@ export function registerFetchFromPyroscopeCommand(profileStore: ProfileStore): v
 
             logger.info(`Time range: ${selectedTimeRange.label} (${selectedTimeRange.value}s)`);
 
-            // Fetch profile
-            await vscode.window.withProgress(
+            const now = Math.floor(Date.now() / 1000);
+            const from = now - selectedTimeRange.value;
+
+            // Fetch available profile types
+            let availableTypes: ProfileType[];
+            try {
+                availableTypes = await vscode.window.withProgress(
+                    {
+                        location: vscode.ProgressLocation.Notification,
+                        title: 'Fetching available profile types...',
+                        cancellable: false,
+                    },
+                    async () => await client.getProfileTypes(from, now)
+                );
+                logger.info(`Found ${availableTypes.length} profile types`);
+                if (shouldLogDebug()) {
+                    availableTypes.forEach((type) => {
+                        logger.debug(
+                            `  - ${type.name}: ${type.sampleType}:${type.sampleUnit} (${type.id})`
+                        );
+                    });
+                }
+            } catch (error: any) {
+                logger.error(`Failed to fetch profile types: ${error.message}`);
+                vscode.window.showErrorMessage(`Failed to fetch profile types: ${error.message}`);
+                return;
+            }
+
+            if (availableTypes.length === 0) {
+                logger.warn('No profile types available for this service');
+                vscode.window.showWarningMessage('No profile types available for this service');
+                return;
+            }
+
+            // Show profile type picker (multi-select)
+            const typeItems = availableTypes.map((type) => ({
+                label: type.name,
+                description: `${type.sampleType}:${type.sampleUnit}`,
+                picked: false,
+                profileType: type,
+            }));
+
+            const selectedTypes = await vscode.window.showQuickPick(typeItems, {
+                placeHolder: 'Select profile types to fetch (multiple selection)',
+                canPickMany: true,
+            });
+
+            if (!selectedTypes || selectedTypes.length === 0) {
+                logger.info('Profile type selection cancelled');
+                return;
+            }
+
+            logger.info(
+                `Selected ${selectedTypes.length} profile types: ${selectedTypes.map((t) => t.label).join(', ')}`
+            );
+
+            // Fetch all selected profile types in parallel
+            const profileEntries = await vscode.window.withProgress(
                 {
                     location: vscode.ProgressLocation.Notification,
-                    title: 'Fetching Profile from Pyroscope',
+                    title: 'Fetching profiles',
                     cancellable: false,
                 },
                 async (progress) => {
-                    progress.report({ message: 'Downloading profile...' });
-                    logger.info('Fetching profile data...');
+                    const entries: ProfileEntry[] = [];
+                    const total = selectedTypes.length;
 
-                    const profileData = await client.fetchProfile(
-                        selectedApp,
-                        selectedTimeRange.value
-                    );
-                    logger.info(`Profile fetched: ${profileData.length} bytes`);
-
-                    progress.report({ message: 'Decompressing...' });
-                    const decompressed = decompressBuffer(profileData);
-                    logger.info(`Decompressed: ${decompressed.length} bytes`);
-
-                    progress.report({ message: 'Parsing profile...' });
-                    const parsed = await parseProfile(decompressed);
-                    logger.info(
-                        `Parsed: ${parsed.samples.length} samples, ${parsed.functions.size} functions`
-                    );
-
-                    progress.report({ message: 'Mapping to source files...' });
-                    const pathResolver = new PathResolver(logger);
-                    const metrics = await mapSamplesToSource(parsed, pathResolver);
-
-                    // Check results
-                    if (metrics.size === 0) {
-                        logger.warn('⚠ Profile fetched but NO files matched!');
-                        logger.info('💡 Possible reasons:');
-                        logger.info("   - Paths in profile don't match local workspace");
-                        logger.info(
-                            '   - Configure path mappings in settings (pyroscope.pathMappings)'
-                        );
-                        logger.info('   - Run "Pyroscope: Show Debug Info" for details');
-
-                        const action = await vscode.window.showWarningMessage(
-                            'Profile loaded but no files matched. Check Output for details.',
-                            'Open Output',
-                            'Configure Path Mappings'
-                        );
-
-                        if (action === 'Open Output') {
-                            logger.show();
-                        } else if (action === 'Configure Path Mappings') {
-                            vscode.commands.executeCommand(
-                                'workbench.action.openSettings',
-                                'pyroscope.pathMappings'
-                            );
-                        }
-                    } else {
-                        const fileCount = metrics.size;
-                        let totalLines = 0;
-                        metrics.forEach((fileMetrics) => {
-                            totalLines += fileMetrics.size;
+                    // Fetch all profiles in parallel
+                    const fetchPromises = selectedTypes.map(async (item, index) => {
+                        const type = item.profileType;
+                        progress.report({
+                            message: `Fetching ${type.name} (${index + 1}/${total})`,
+                            increment: 100 / total,
                         });
 
-                        logger.info(`✓ SUCCESS: ${fileCount} files, ${totalLines} annotated lines`);
+                        try {
+                            logger.info(`Fetching ${type.name} profile...`);
 
-                        vscode.window.showInformationMessage(
-                            `Profile loaded: ${fileCount} files, ${totalLines} annotated lines`
-                        );
-                    }
+                            // Fetch profile
+                            const profileData = await client.fetchProfile(
+                                selectedApp,
+                                selectedTimeRange.value,
+                                type.id
+                            );
+                            logger.info(`  ${type.name}: Fetched ${profileData.length} bytes`);
 
-                    // Store the profile
-                    const profileName = `${selectedApp} (${selectedTimeRange.label})`;
-                    profileStore.loadProfile(metrics, profileName);
+                            // Decompress
+                            const decompressed = decompressBuffer(profileData);
+                            logger.info(
+                                `  ${type.name}: Decompressed ${decompressed.length} bytes`
+                            );
+
+                            // Parse
+                            const parsed = await parseProfile(decompressed);
+                            logger.info(
+                                `  ${type.name}: Parsed ${parsed.samples.length} samples, ${parsed.functions.size} functions`
+                            );
+
+                            // Map to source
+                            const pathResolver = new PathResolver(logger);
+                            const metrics = await mapSamplesToSource(parsed, pathResolver);
+
+                            if (metrics.size === 0) {
+                                logger.warn(
+                                    `  ${type.name}: ⚠ Profile fetched but NO files matched`
+                                );
+                                return null;
+                            }
+
+                            logger.info(
+                                `  ${type.name}: ✓ SUCCESS: ${metrics.size} files with metrics`
+                            );
+
+                            return {
+                                name: type.name,
+                                typeId: type.id,
+                                sampleType: type.sampleType,
+                                unit: type.sampleUnit,
+                                metrics,
+                            } as ProfileEntry;
+                        } catch (error: any) {
+                            logger.error(`  ${type.name}: Failed - ${error.message}`);
+                            vscode.window.showWarningMessage(
+                                `Failed to fetch ${type.name} profile: ${error.message}`
+                            );
+                            return null;
+                        }
+                    });
+
+                    const results = await Promise.all(fetchPromises);
+                    return results.filter((entry): entry is ProfileEntry => entry !== null);
                 }
+            );
+
+            if (profileEntries.length === 0) {
+                logger.error('Failed to fetch any profiles');
+                vscode.window.showErrorMessage('Failed to fetch any profiles');
+                return;
+            }
+
+            // Store the profiles
+            const sessionName = `${selectedApp} (${selectedTimeRange.label})`;
+            profileStore.loadProfiles(profileEntries, sessionName);
+
+            // Show success message
+            const profileNames = profileEntries.map((e) => e.name).join(', ');
+            const fileCount = new Set(profileEntries.flatMap((e) => Array.from(e.metrics.keys())))
+                .size;
+
+            logger.info(
+                `✓ Loaded ${profileEntries.length} profiles (${profileNames}): ${fileCount} files`
+            );
+
+            vscode.window.showInformationMessage(
+                `Loaded ${profileEntries.length} profiles (${profileNames}): ${fileCount} files`
             );
         } catch (error) {
             const errMsg = error instanceof Error ? error.message : String(error);

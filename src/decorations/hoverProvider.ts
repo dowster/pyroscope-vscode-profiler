@@ -13,53 +13,68 @@ export class PyroscopeHoverProvider implements vscode.HoverProvider {
         const lineNumber = position.line + 1; // VS Code lines are 0-indexed
         const filePath = document.uri.fsPath;
 
-        const fileMetrics = this.profileStore.getMetricsForFile(filePath);
-        if (!fileMetrics) {
+        const loadedProfiles = this.profileStore.getLoadedProfileNames();
+        if (loadedProfiles.length === 0) {
             return null;
         }
 
-        const metrics = fileMetrics.get(lineNumber);
-        if (!metrics) {
+        const sections: string[] = [];
+
+        loadedProfiles.forEach((profileName) => {
+            const entry = this.profileStore.getProfileEntry(profileName);
+            if (!entry) {
+                return;
+            }
+
+            const fileMetrics = this.profileStore.getMetricsForProfile(profileName, filePath);
+            const metrics = fileMetrics?.get(lineNumber);
+            if (!metrics) {
+                return;
+            }
+
+            sections.push(this.formatProfileSection(profileName, metrics, entry.unit));
+        });
+
+        if (sections.length === 0) {
             return null;
         }
 
-        const markdown = this.formatMetrics(metrics);
+        const markdown = new vscode.MarkdownString();
+        markdown.isTrusted = true;
+        markdown.supportHtml = true;
+        markdown.appendMarkdown('### 🔥 Pyroscope Profile Data\n\n');
+        markdown.appendMarkdown(sections.join('\n\n---\n\n'));
+
         return new vscode.Hover(markdown);
     }
 
-    private formatMetrics(metrics: LineMetrics): vscode.MarkdownString {
-        const md = new vscode.MarkdownString();
-        md.isTrusted = true;
-        md.supportHtml = true;
+    private formatProfileSection(name: string, metrics: LineMetrics, unit: string): string {
+        let section = `**${name.toUpperCase()} Profile**\n\n`;
 
-        md.appendMarkdown('### 🔥 Pyroscope Profile Data\n\n');
-
-        // CPU Metrics
-        if (metrics.cpuSamples > 0) {
-            md.appendMarkdown('**CPU Usage:**\n\n');
-            md.appendMarkdown(`- Self: ${this.formatPercent(metrics.selfCpuPercent)}\n`);
-            md.appendMarkdown(`- Cumulative: ${this.formatPercent(metrics.cpuPercent)}\n`);
-            md.appendMarkdown(`- Samples: ${metrics.cpuSamples.toLocaleString()}\n\n`);
-        }
-
-        // Memory Metrics
-        if (metrics.memoryBytes > 0) {
-            md.appendMarkdown('**Memory Allocation:**\n\n');
-            md.appendMarkdown(`- Self: ${this.formatPercent(metrics.selfMemoryPercent)}\n`);
-            md.appendMarkdown(`- Cumulative: ${this.formatPercent(metrics.memoryPercent)}\n`);
-            md.appendMarkdown(`- Bytes: ${this.formatBytes(metrics.memoryBytes)}\n`);
+        if (unit === 'nanoseconds') {
+            // CPU profile
+            section += `- **Self CPU**: ${this.formatPercent(metrics.selfCpuPercent)}\n`;
+            section += `- **Cumulative CPU**: ${this.formatPercent(metrics.cpuPercent)}\n`;
+            section += `- **Samples**: ${metrics.cpuSamples.toLocaleString()}\n`;
+        } else if (unit === 'bytes') {
+            // Memory profile
+            const selfMB = (metrics.memoryBytes / (1024 * 1024)).toFixed(2);
+            section += `- **Self Memory**: ${selfMB}MB (${this.formatPercent(metrics.selfMemoryPercent)})\n`;
+            section += `- **Cumulative Memory**: ${this.formatPercent(metrics.memoryPercent)}\n`;
             if (metrics.allocations > 0) {
-                md.appendMarkdown(`- Allocations: ${metrics.allocations.toLocaleString()}\n`);
+                section += `- **Allocations**: ${metrics.allocations.toLocaleString()}\n`;
             }
-            md.appendMarkdown('\n');
+        } else if (unit === 'count') {
+            // Generic count (goroutines, blocks, etc.)
+            section += `- **Count**: ${metrics.cpuSamples.toLocaleString()}\n`;
+            section += `- **Percentage**: ${this.formatPercent(metrics.cpuPercent)}\n`;
+        } else {
+            // Unknown - show generic info
+            section += `- **Value**: ${this.formatPercent(metrics.cpuPercent)}\n`;
+            section += `- **Unit**: ${unit}\n`;
         }
 
-        // Explanation
-        md.appendMarkdown('---\n\n');
-        md.appendMarkdown('*Self: time/memory spent in this line*\n\n');
-        md.appendMarkdown('*Cumulative: includes time/memory in called functions*\n');
-
-        return md;
+        return section;
     }
 
     private formatPercent(value: number): string {

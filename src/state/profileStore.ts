@@ -6,20 +6,52 @@ export interface ProfileInfo {
     timestamp: string;
 }
 
+export interface ProfileEntry {
+    name: string;
+    typeId: string;
+    sampleType: string;
+    unit: string;
+    metrics: ProfileMetrics;
+}
+
 export class ProfileStore {
-    private metrics: ProfileMetrics | null = null;
+    private profiles: Map<string, ProfileEntry> = new Map();
     private profileInfo: ProfileInfo | null = null;
     private changeEmitter = new vscode.EventEmitter<void>();
 
     public readonly onProfileChanged = this.changeEmitter.event;
 
     /**
-     * Load new profile data
+     * Load new profile data (legacy method for backward compatibility)
      */
     public loadProfile(metrics: ProfileMetrics, name: string): void {
-        this.metrics = metrics;
+        // Convert single profile to multi-profile format with "cpu" as default type
+        const entry: ProfileEntry = {
+            name: 'cpu',
+            typeId: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
+            sampleType: 'cpu',
+            unit: 'nanoseconds',
+            metrics,
+        };
+        this.profiles.clear();
+        this.profiles.set('cpu', entry);
         this.profileInfo = {
             name,
+            timestamp: new Date().toISOString(),
+        };
+        this.changeEmitter.fire();
+    }
+
+    /**
+     * Load multiple profile entries
+     */
+    public loadProfiles(entries: ProfileEntry[], sessionName: string): void {
+        this.profiles.clear();
+        entries.forEach((entry) => {
+            this.profiles.set(entry.name, entry);
+        });
+        this.profileInfo = {
+            name: sessionName,
             timestamp: new Date().toISOString(),
         };
         this.changeEmitter.fire();
@@ -29,26 +61,54 @@ export class ProfileStore {
      * Clear all profile data
      */
     public clearProfile(): void {
-        this.metrics = null;
+        this.profiles.clear();
         this.profileInfo = null;
         this.changeEmitter.fire();
     }
 
     /**
-     * Get metrics for a specific file
+     * Get metrics for a specific file (backward compatible - uses first profile)
+     * @deprecated Use getMetricsForProfile instead
      */
-    public getMetricsForFile(filePath: string): FileMetrics | null {
-        if (!this.metrics) {
+    public getMetricsForFile(filePath: string): FileMetrics | null;
+    /**
+     * Get metrics for a specific profile and file
+     */
+    public getMetricsForFile(profileName: string, filePath: string): FileMetrics | null;
+    public getMetricsForFile(arg1: string, arg2?: string): FileMetrics | null {
+        // Handle backward compatibility: single argument means filePath only
+        if (arg2 === undefined) {
+            const filePath = arg1;
+            // Use first profile for backward compatibility
+            if (this.profiles.size === 0) {
+                return null;
+            }
+            const firstProfile = Array.from(this.profiles.values())[0];
+            return this.getMetricsForProfile(firstProfile.name, filePath);
+        }
+
+        // New API: profileName and filePath
+        const profileName = arg1;
+        const filePath = arg2;
+        return this.getMetricsForProfile(profileName, filePath);
+    }
+
+    /**
+     * Get metrics for a specific profile and file
+     */
+    public getMetricsForProfile(profileName: string, filePath: string): FileMetrics | null {
+        const entry = this.profiles.get(profileName);
+        if (!entry) {
             return null;
         }
 
         // Try exact match first
-        if (this.metrics.has(filePath)) {
-            return this.metrics.get(filePath)!;
+        if (entry.metrics.has(filePath)) {
+            return entry.metrics.get(filePath)!;
         }
 
         // Try to find by normalized path comparison
-        for (const [profilePath, metrics] of this.metrics.entries()) {
+        for (const [profilePath, metrics] of entry.metrics.entries()) {
             if (this.pathsMatch(profilePath, filePath)) {
                 return metrics;
             }
@@ -58,10 +118,24 @@ export class ProfileStore {
     }
 
     /**
+     * Get all loaded profile names
+     */
+    public getLoadedProfileNames(): string[] {
+        return Array.from(this.profiles.keys());
+    }
+
+    /**
+     * Get profile entry by name
+     */
+    public getProfileEntry(name: string): ProfileEntry | null {
+        return this.profiles.get(name) || null;
+    }
+
+    /**
      * Check if a profile is loaded
      */
     public hasProfile(): boolean {
-        return this.metrics !== null;
+        return this.profiles.size > 0;
     }
 
     /**
@@ -72,20 +146,25 @@ export class ProfileStore {
     }
 
     /**
-     * Get all file paths with metrics
+     * Get all file paths with metrics (from first profile for backward compatibility)
      */
     public getFilePaths(): string[] {
-        if (!this.metrics) {
+        if (this.profiles.size === 0) {
             return [];
         }
-        return Array.from(this.metrics.keys());
+        const firstProfile = Array.from(this.profiles.values())[0];
+        return Array.from(firstProfile.metrics.keys());
     }
 
     /**
-     * Get all metrics (for debug info)
+     * Get all metrics (for debug info - from first profile for backward compatibility)
      */
     public getAllMetrics(): ProfileMetrics {
-        return this.metrics || new Map();
+        if (this.profiles.size === 0) {
+            return new Map();
+        }
+        const firstProfile = Array.from(this.profiles.values())[0];
+        return firstProfile.metrics;
     }
 
     /**

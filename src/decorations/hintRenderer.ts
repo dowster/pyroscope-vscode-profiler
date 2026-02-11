@@ -4,6 +4,7 @@ export interface HintConfig {
     displayMode: 'cpu' | 'memory' | 'both';
     colorScheme: 'heatmap' | 'threshold' | 'minimal';
     threshold: number;
+    displayProfiles?: string[];
 }
 
 export interface RenderedHint {
@@ -12,9 +13,33 @@ export interface RenderedHint {
 }
 
 /**
- * Formats inline hint text for a line with metrics
+ * Formats inline hint text for a line with metrics (single profile - legacy)
  */
-export function renderHint(metrics: LineMetrics, config: HintConfig): RenderedHint | null {
+export function renderHint(metrics: LineMetrics, config: HintConfig): RenderedHint | null;
+/**
+ * Formats inline hint text for multiple profile types on a single line
+ */
+export function renderHint(
+    profileMetrics: Map<string, { metrics: LineMetrics; unit: string }>,
+    config: HintConfig
+): RenderedHint | null;
+export function renderHint(
+    metricsOrMap: LineMetrics | Map<string, { metrics: LineMetrics; unit: string }>,
+    config: HintConfig
+): RenderedHint | null {
+    // Handle legacy single-profile case
+    if (!(metricsOrMap instanceof Map)) {
+        return renderSingleProfileHint(metricsOrMap, config);
+    }
+
+    // Handle multi-profile case
+    return renderMultiProfileHint(metricsOrMap, config);
+}
+
+/**
+ * Render hint for single profile (backward compatible)
+ */
+function renderSingleProfileHint(metrics: LineMetrics, config: HintConfig): RenderedHint | null {
     const parts: string[] = [];
 
     // Check threshold
@@ -90,6 +115,81 @@ function formatPercent(value: number): string {
     } else {
         return `${value.toFixed(3)}%`;
     }
+}
+
+/**
+ * Render hint for multiple profile types
+ */
+function renderMultiProfileHint(
+    profileMetrics: Map<string, { metrics: LineMetrics; unit: string }>,
+    config: HintConfig
+): RenderedHint | null {
+    const parts: string[] = [];
+    let maxPercent = 0;
+
+    // Get profiles to display (either from config or all profiles)
+    const displayProfiles = config.displayProfiles || Array.from(profileMetrics.keys());
+
+    // Iterate through profiles in displayProfiles order
+    displayProfiles.forEach((profileName) => {
+        const data = profileMetrics.get(profileName);
+        if (!data) {
+            return;
+        }
+
+        const { metrics, unit } = data;
+
+        // Format based on unit type
+        let text: string;
+        let percent: number;
+
+        if (unit === 'nanoseconds') {
+            // CPU profile
+            percent = metrics.selfCpuPercent;
+            if (percent < config.threshold) {
+                return;
+            }
+            text = `${profileName}: ${formatPercent(percent)}`;
+        } else if (unit === 'bytes') {
+            // Memory profile
+            percent = metrics.selfMemoryPercent;
+            if (percent < config.threshold) {
+                return;
+            }
+            const mb = (metrics.memoryBytes / (1024 * 1024)).toFixed(1);
+            text = `${profileName}: ${mb}MB (${formatPercent(percent)})`;
+        } else if (unit === 'count') {
+            // Goroutines, blocks, mutex, etc.
+            percent = metrics.selfCpuPercent; // Reuse cpuPercent field for generic percentage
+            if (percent < config.threshold) {
+                return;
+            }
+            const count = metrics.cpuSamples; // Reuse cpuSamples for generic count
+            text = `${profileName}: ${count}`;
+        } else {
+            // Unknown unit - generic display
+            percent = metrics.selfCpuPercent;
+            if (percent < config.threshold) {
+                return;
+            }
+            text = `${profileName}: ${formatPercent(percent)}`;
+        }
+
+        parts.push(text);
+        maxPercent = Math.max(maxPercent, percent);
+    });
+
+    if (parts.length === 0) {
+        return null;
+    }
+
+    // Calculate color based on max percentage
+    const color = getColor(maxPercent, config.colorScheme);
+
+    return {
+        text: parts.join(' | '),
+        color,
+    };
 }
 
 /**

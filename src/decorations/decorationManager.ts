@@ -53,25 +53,62 @@ export class DecorationManager {
      */
     private updateEditorDecorations(editor: vscode.TextEditor, config: HintConfig): void {
         const filePath = editor.document.uri.fsPath;
-        const fileMetrics = this.profileStore.getMetricsForFile(filePath);
+
+        // Get loaded profile names and which ones to display
+        const loadedProfiles = this.profileStore.getLoadedProfileNames();
+        const displayProfiles = config.displayProfiles || loadedProfiles;
 
         if (shouldLogDebug()) {
-            if (fileMetrics) {
-                this.logger.debug(`  ${filePath}: ${fileMetrics.size} lines with metrics`);
-            } else {
-                this.logger.debug(`  ${filePath}: no metrics found`);
-            }
+            this.logger.debug(
+                `  ${filePath}: Displaying ${displayProfiles.length} profiles: ${displayProfiles.join(', ')}`
+            );
         }
 
-        if (!fileMetrics) {
+        // Group metrics by line number, collecting from all profiles
+        const lineMetricsMap = new Map<
+            number,
+            Map<string, { metrics: import('../parser/sourceMapper').LineMetrics; unit: string }>
+        >();
+
+        displayProfiles.forEach((profileName) => {
+            if (!loadedProfiles.includes(profileName)) {
+                return;
+            }
+
+            const entry = this.profileStore.getProfileEntry(profileName);
+            if (!entry) {
+                return;
+            }
+
+            const fileMetrics = this.profileStore.getMetricsForProfile(profileName, filePath);
+            if (!fileMetrics) {
+                return;
+            }
+
+            fileMetrics.forEach((metrics, lineNumber) => {
+                if (!lineMetricsMap.has(lineNumber)) {
+                    lineMetricsMap.set(lineNumber, new Map());
+                }
+                lineMetricsMap.get(lineNumber)!.set(profileName, {
+                    metrics,
+                    unit: entry.unit,
+                });
+            });
+        });
+
+        if (shouldLogDebug()) {
+            this.logger.debug(`  ${filePath}: ${lineMetricsMap.size} lines with metrics`);
+        }
+
+        if (lineMetricsMap.size === 0) {
             return;
         }
 
         // Group decorations by color
         const decorationsByColor = new Map<string, vscode.DecorationOptions[]>();
 
-        fileMetrics.forEach((metrics, lineNumber) => {
-            const hint = renderHint(metrics, config);
+        lineMetricsMap.forEach((profileMetrics, lineNumber) => {
+            const hint = renderHint(profileMetrics, config);
             if (!hint) {
                 return;
             }
@@ -147,10 +184,20 @@ export class DecorationManager {
      */
     private getConfig(): HintConfig {
         const config = vscode.workspace.getConfiguration('pyroscope');
+
+        // Get display profiles (new setting)
+        let displayProfiles = config.get<string[]>('displayProfiles');
+
+        // If not set or empty, use all loaded profiles
+        if (!displayProfiles || displayProfiles.length === 0) {
+            displayProfiles = this.profileStore.getLoadedProfileNames();
+        }
+
         return {
             displayMode: config.get<'cpu' | 'memory' | 'both'>('displayMode', 'both'),
             colorScheme: config.get<'heatmap' | 'threshold' | 'minimal'>('colorScheme', 'heatmap'),
             threshold: config.get<number>('threshold', 1.0),
+            displayProfiles,
         };
     }
 
