@@ -156,8 +156,9 @@ function renderMultiProfileHint(
             if (percent < config.threshold) {
                 return;
             }
-            const mb = (metrics.memoryBytes / (1024 * 1024)).toFixed(1);
-            text = `${profileName}: ${mb}MB (${formatPercent(percent)})`;
+            const mb = metrics.memoryBytes / (1024 * 1024);
+            const formattedMb = mb >= 10 ? mb.toFixed(1) : mb.toFixed(2);
+            text = `${profileName}: ${parseFloat(formattedMb).toLocaleString()}MB (${formatPercent(percent)})`;
         } else if (unit === 'count') {
             // Goroutines, blocks, mutex, etc.
             percent = metrics.selfCpuPercent; // Reuse cpuPercent field for generic percentage
@@ -165,7 +166,7 @@ function renderMultiProfileHint(
                 return;
             }
             const count = metrics.cpuSamples; // Reuse cpuSamples for generic count
-            text = `${profileName}: ${count}`;
+            text = `${profileName}: ${count.toLocaleString()}`;
         } else {
             // Unknown unit - generic display
             percent = metrics.selfCpuPercent;
