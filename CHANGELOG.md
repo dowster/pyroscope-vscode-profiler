@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.1.1...v1.1.2) (2026-02-11)
+
+
+### Bug Fixes
+
+* whole bunch of fixes and a few future plans ([72a20a3](https://github.com/dowster/pyroscope-vscode-profiler/commit/72a20a39484bc449a21e730447ddb9ef8e12aa71))
+
 ## [1.1.1](https://github.com/dowster/pyroscope-vscode-profiler/compare/v1.1.0...v1.1.1) (2026-02-11)
 
 
