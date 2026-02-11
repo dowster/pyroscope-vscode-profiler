@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import { shouldLogDebug } from './logger';
 
 export interface PathMapping {
@@ -19,15 +20,48 @@ export class PathResolver {
         this.logger = logger;
     }
 
-    private loadPathMappings(): PathMapping[] {
-        const config = vscode.workspace.getConfiguration('pyroscope');
-        const mappings = config.get<PathMapping[]>('pathMappings', []);
+    private getDefaultPathMappings(): PathMapping[] {
+        const defaults: PathMapping[] = [];
+        const homeDir = os.homedir();
 
-        // Substitute ${workspaceFolder} variable
-        return mappings.map((m) => ({
-            from: m.from,
-            to: this.substituteVariables(m.to),
-        }));
+        // Default 1: GitHub Actions home directory
+        defaults.push({
+            from: '/home/runner/',
+            to: homeDir + '/',
+        });
+
+        // Default 2: GitHub Actions workspace pattern
+        if (this.workspaceFolders.length > 0) {
+            const workspaceFolder = this.workspaceFolders[0].uri.fsPath;
+            const repoName = path.basename(workspaceFolder);
+
+            defaults.push({
+                from: `/home/runner/work/${repoName}/${repoName}/`,
+                to: workspaceFolder + '/',
+            });
+        }
+
+        return defaults;
+    }
+
+    private loadPathMappings(): PathMapping[] {
+        const defaults = this.getDefaultPathMappings();
+        const config = vscode.workspace.getConfiguration('pyroscope');
+        const userMappings = config.get<PathMapping[]>('pathMappings', []);
+
+        // Combine user mappings with defaults
+        const mappings = [
+            ...userMappings.map((m) => ({
+                from: m.from,
+                to: this.substituteVariables(m.to),
+            })),
+            ...defaults,
+        ];
+
+        // Sort by specificity (longest prefix first) so more specific mappings match first
+        mappings.sort((a, b) => b.from.length - a.from.length);
+
+        return mappings;
     }
 
     private substituteVariables(pathStr: string): string {
