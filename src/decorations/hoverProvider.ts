@@ -53,13 +53,17 @@ export class PyroscopeHoverProvider implements vscode.HoverProvider {
 
         if (unit === 'nanoseconds') {
             // CPU profile
-            section += `- **Self CPU**: ${this.formatPercent(metrics.selfCpuPercent)}\n`;
-            section += `- **Cumulative CPU**: ${this.formatPercent(metrics.cpuPercent)}\n`;
-            section += `- **Samples**: ${metrics.cpuSamples.toLocaleString()}\n`;
-            // If memoryBytes contains nanoseconds data for CPU profiles
-            if (metrics.memoryBytes > 0) {
-                section += `- **Time**: ${this.formatNanoseconds(metrics.memoryBytes)}\n`;
+            section += `- **Self CPU**: ${this.formatPercent(metrics.selfCpuPercent)}`;
+            if (metrics.selfCpuNanoseconds > 0) {
+                section += ` (${this.formatNanoseconds(metrics.selfCpuNanoseconds)})`;
             }
+            section += '\n';
+            section += `- **Cumulative CPU**: ${this.formatPercent(metrics.cpuPercent)}`;
+            if (metrics.cpuNanoseconds > 0) {
+                section += ` (${this.formatNanoseconds(metrics.cpuNanoseconds)})`;
+            }
+            section += '\n';
+            section += `- **Samples**: ${metrics.cpuSamples.toLocaleString()}\n`;
         } else if (unit === 'bytes') {
             // Memory profile
             section += `- **Self Memory**: ${this.formatBytes(metrics.memoryBytes)} (${this.formatPercent(metrics.selfMemoryPercent)})\n`;

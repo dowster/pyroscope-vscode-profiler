@@ -9,6 +9,8 @@ export interface LineMetrics {
     line: number;
     cpuPercent: number;
     cpuSamples: number;
+    cpuNanoseconds: number; // Absolute CPU time in nanoseconds
+    selfCpuNanoseconds: number; // Self CPU time in nanoseconds
     memoryBytes: number;
     memoryPercent: number;
     allocations: number;
@@ -139,6 +141,8 @@ export async function mapSamplesToSource(
                     line: frame.line,
                     cpuPercent: 0,
                     cpuSamples: 0,
+                    cpuNanoseconds: 0,
+                    selfCpuNanoseconds: 0,
                     memoryBytes: 0,
                     memoryPercent: 0,
                     allocations: 0,
@@ -155,8 +159,10 @@ export async function mapSamplesToSource(
             if (cpuIndex !== -1 && sample.values[cpuIndex]) {
                 const cpuValue = sample.values[cpuIndex];
                 lineMetrics.cpuSamples += cpuValue;
+                lineMetrics.cpuNanoseconds += cpuValue; // For CPU profiles, value is in nanoseconds
                 if (isSelfFrame) {
                     lineMetrics.selfCpuPercent += cpuValue;
+                    lineMetrics.selfCpuNanoseconds += cpuValue;
                 }
             }
 

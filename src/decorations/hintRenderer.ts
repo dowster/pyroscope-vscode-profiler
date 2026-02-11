@@ -51,10 +51,10 @@ function renderSingleProfileHint(metrics: LineMetrics, config: HintConfig): Rend
     // Add CPU info
     if (config.displayMode === 'cpu' || config.displayMode === 'both') {
         if (metrics.selfCpuPercent > 0) {
-            // Check if we have nanoseconds data stored in memoryBytes for CPU profiles
-            if (metrics.memoryBytes > 0 && config.displayMode === 'cpu') {
+            // Show percentage and absolute time if available
+            if (metrics.selfCpuNanoseconds > 0) {
                 parts.push(
-                    `CPU: ${formatPercent(metrics.selfCpuPercent)} (${formatNanoseconds(metrics.memoryBytes)})`
+                    `CPU: ${formatPercent(metrics.selfCpuPercent)} (${formatNanoseconds(metrics.selfCpuNanoseconds)})`
                 );
             } else {
                 parts.push(`CPU: ${formatPercent(metrics.selfCpuPercent)}`);
@@ -151,14 +151,14 @@ function renderMultiProfileHint(
         let percent: number;
 
         if (unit === 'nanoseconds') {
-            // CPU profile - show percentage and optionally time if we have actual nanoseconds
+            // CPU profile - show percentage and absolute time
             percent = metrics.selfCpuPercent;
             if (percent < config.threshold) {
                 return;
             }
-            // If memoryBytes is used to store nanoseconds for CPU profiles, format it
-            if (metrics.memoryBytes > 0) {
-                text = `${profileName}: ${formatPercent(percent)} (${formatNanoseconds(metrics.memoryBytes)})`;
+            // Show both percentage and absolute nanoseconds
+            if (metrics.selfCpuNanoseconds > 0) {
+                text = `${profileName}: ${formatPercent(percent)} (${formatNanoseconds(metrics.selfCpuNanoseconds)})`;
             } else {
                 text = `${profileName}: ${formatPercent(percent)}`;
             }
