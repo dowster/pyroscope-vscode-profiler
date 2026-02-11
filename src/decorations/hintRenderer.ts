@@ -51,7 +51,14 @@ function renderSingleProfileHint(metrics: LineMetrics, config: HintConfig): Rend
     // Add CPU info
     if (config.displayMode === 'cpu' || config.displayMode === 'both') {
         if (metrics.selfCpuPercent > 0) {
-            parts.push(`CPU: ${formatPercent(metrics.selfCpuPercent)}`);
+            // Check if we have nanoseconds data stored in memoryBytes for CPU profiles
+            if (metrics.memoryBytes > 0 && config.displayMode === 'cpu') {
+                parts.push(
+                    `CPU: ${formatPercent(metrics.selfCpuPercent)} (${formatNanoseconds(metrics.memoryBytes)})`
+                );
+            } else {
+                parts.push(`CPU: ${formatPercent(metrics.selfCpuPercent)}`);
+            }
         }
     }
 
@@ -144,21 +151,24 @@ function renderMultiProfileHint(
         let percent: number;
 
         if (unit === 'nanoseconds') {
-            // CPU profile
+            // CPU profile - show percentage and optionally time if we have actual nanoseconds
             percent = metrics.selfCpuPercent;
             if (percent < config.threshold) {
                 return;
             }
-            text = `${profileName}: ${formatPercent(percent)}`;
+            // If memoryBytes is used to store nanoseconds for CPU profiles, format it
+            if (metrics.memoryBytes > 0) {
+                text = `${profileName}: ${formatPercent(percent)} (${formatNanoseconds(metrics.memoryBytes)})`;
+            } else {
+                text = `${profileName}: ${formatPercent(percent)}`;
+            }
         } else if (unit === 'bytes') {
-            // Memory profile
+            // Memory profile - show formatted bytes and percentage
             percent = metrics.selfMemoryPercent;
             if (percent < config.threshold) {
                 return;
             }
-            const mb = metrics.memoryBytes / (1024 * 1024);
-            const formattedMb = mb >= 10 ? mb.toFixed(1) : mb.toFixed(2);
-            text = `${profileName}: ${parseFloat(formattedMb).toLocaleString()}MB (${formatPercent(percent)})`;
+            text = `${profileName}: ${formatBytes(metrics.memoryBytes)} (${formatPercent(percent)})`;
         } else if (unit === 'count') {
             // Goroutines, blocks, mutex, etc.
             percent = metrics.selfCpuPercent; // Reuse cpuPercent field for generic percentage
@@ -194,6 +204,33 @@ function renderMultiProfileHint(
 }
 
 /**
+ * Formats nanoseconds to human-readable time format
+ */
+function formatNanoseconds(nanoseconds: number): string {
+    if (nanoseconds === 0) {
+        return '0ns';
+    }
+
+    // Convert to different units
+    const microseconds = nanoseconds / 1000;
+    const milliseconds = microseconds / 1000;
+    const seconds = milliseconds / 1000;
+    const minutes = seconds / 60;
+
+    if (minutes >= 1) {
+        return `${minutes.toFixed(2)}min`;
+    } else if (seconds >= 1) {
+        return `${seconds.toFixed(2)}s`;
+    } else if (milliseconds >= 1) {
+        return `${milliseconds.toFixed(2)}ms`;
+    } else if (microseconds >= 1) {
+        return `${microseconds.toFixed(2)}μs`;
+    } else {
+        return `${nanoseconds.toFixed(0)}ns`;
+    }
+}
+
+/**
  * Formats byte values to human-readable format
  */
 function formatBytes(bytes: number): string {
@@ -207,7 +244,7 @@ function formatBytes(bytes: number): string {
     const value = bytes / Math.pow(k, i);
 
     if (i === 0) {
-        return `${value} ${sizes[i]}`;
+        return `${value.toLocaleString()} ${sizes[i]}`;
     } else if (value >= 100) {
         return `${value.toFixed(0)} ${sizes[i]}`;
     } else if (value >= 10) {

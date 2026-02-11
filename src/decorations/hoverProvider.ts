@@ -56,10 +56,13 @@ export class PyroscopeHoverProvider implements vscode.HoverProvider {
             section += `- **Self CPU**: ${this.formatPercent(metrics.selfCpuPercent)}\n`;
             section += `- **Cumulative CPU**: ${this.formatPercent(metrics.cpuPercent)}\n`;
             section += `- **Samples**: ${metrics.cpuSamples.toLocaleString()}\n`;
+            // If memoryBytes contains nanoseconds data for CPU profiles
+            if (metrics.memoryBytes > 0) {
+                section += `- **Time**: ${this.formatNanoseconds(metrics.memoryBytes)}\n`;
+            }
         } else if (unit === 'bytes') {
             // Memory profile
-            const selfMB = (metrics.memoryBytes / (1024 * 1024)).toFixed(2);
-            section += `- **Self Memory**: ${selfMB}MB (${this.formatPercent(metrics.selfMemoryPercent)})\n`;
+            section += `- **Self Memory**: ${this.formatBytes(metrics.memoryBytes)} (${this.formatPercent(metrics.selfMemoryPercent)})\n`;
             section += `- **Cumulative Memory**: ${this.formatPercent(metrics.memoryPercent)}\n`;
             if (metrics.allocations > 0) {
                 section += `- **Allocations**: ${metrics.allocations.toLocaleString()}\n`;
@@ -87,6 +90,29 @@ export class PyroscopeHoverProvider implements vscode.HoverProvider {
         }
     }
 
+    private formatNanoseconds(nanoseconds: number): string {
+        if (nanoseconds === 0) {
+            return '0ns';
+        }
+
+        const microseconds = nanoseconds / 1000;
+        const milliseconds = microseconds / 1000;
+        const seconds = milliseconds / 1000;
+        const minutes = seconds / 60;
+
+        if (minutes >= 1) {
+            return `${minutes.toFixed(2)}min`;
+        } else if (seconds >= 1) {
+            return `${seconds.toFixed(2)}s`;
+        } else if (milliseconds >= 1) {
+            return `${milliseconds.toFixed(2)}ms`;
+        } else if (microseconds >= 1) {
+            return `${microseconds.toFixed(2)}μs`;
+        } else {
+            return `${nanoseconds.toFixed(0)}ns`;
+        }
+    }
+
     private formatBytes(bytes: number): string {
         if (bytes === 0) {
             return '0 B';
@@ -98,7 +124,7 @@ export class PyroscopeHoverProvider implements vscode.HoverProvider {
         const value = bytes / Math.pow(k, i);
 
         if (i === 0) {
-            return `${value} ${sizes[i]}`;
+            return `${value.toLocaleString()} ${sizes[i]}`;
         } else if (value >= 100) {
             return `${value.toFixed(0)} ${sizes[i]}`;
         } else if (value >= 10) {
